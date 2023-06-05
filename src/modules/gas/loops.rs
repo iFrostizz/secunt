@@ -17,6 +17,15 @@ build_visitor! {
                 description: "Avoid loading n times from the array element in the memory and create a stack variable by caching the length".to_string(),
                 severity: Severity::Gas
             }
+        ),
+        // TODO: actually do it sir
+        (
+            2,
+            FindingKey {
+                summary: "External calls in an unbounded loop may result in a DOS".to_string(),
+                description: "Avoid using external calls in for loops, especially untrusted ones because they may leave the contract in a DOS state.".to_string(),
+                severity: Severity::Low
+            }
         )
     ]),
 

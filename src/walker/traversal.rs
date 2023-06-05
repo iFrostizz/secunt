@@ -137,8 +137,12 @@ pub fn visit_sources<D>(
     let mut last_id = 0usize;
     let mut visitor = visitor.borrow_mut();
 
-    for (mut source, info, abs_path) in full_sources.into_iter() {
-        source.ast.visit(visitor.deref_mut())?;
+    for (source, info, abs_path) in full_sources.into_iter() {
+        let mut ast = source.ast;
+        if let Some(path) = abs_path.as_os_str().to_str() {
+            ast.source_unit.absolute_path = path.to_string();
+        }
+        ast.visit(visitor.deref_mut())?;
 
         let data = visitor.shared_data();
         let findings_data = &data.findings.to_vec();

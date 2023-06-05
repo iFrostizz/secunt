@@ -87,6 +87,7 @@ pub struct Finding {
     pub gas: Option<u64>,
 }
 
+// TODO: remove those String and use str for the sake of god!
 #[derive(Debug, Clone)]
 pub struct FindingKey {
     pub summary: String,

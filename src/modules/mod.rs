@@ -20,6 +20,8 @@ macro_rules! build_visitor {
         #[allow(unused)]
         use semver::{Version, VersionReq};
         #[allow(unused)]
+        use std::path::PathBuf;
+        #[allow(unused)]
         use std::collections::{BTreeMap, HashSet, HashMap};
         #[allow(unused)]
         use ethers_contract::BaseContract;
@@ -46,6 +48,7 @@ macro_rules! build_visitor {
             /// variables assigned in the constructor or in the state only
             pub constructor_variables: HashSet<String>,
             pub events: Vec<EmitStatement>,
+            pub param_addr: HashSet<String>,
             pub shared_data: ModuleState,
             pub revert_reasons: HashMap<String, Vec<SourceLocation>>,
             pub id_var: HashMap<usize, VariableDeclaration>
@@ -64,6 +67,7 @@ macro_rules! build_visitor {
                     constructor_variables: HashSet::new(),
                     assigned_variables: HashSet::new(),
                     events: Vec::new(),
+                    param_addr: Default::default(),
                     inside: Default::default(),
                     shared_data: ModuleState {
                         name: get_module_name(),

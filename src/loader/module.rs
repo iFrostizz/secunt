@@ -64,6 +64,11 @@ pub fn get_all_visitors() -> Vec<Rc<RefCell<(dyn Visitor<ModuleState> + 'static)
         Rc::from(RefCell::from(oz::DetectionModule::default())),
         Rc::from(RefCell::from(high::dirty::DetectionModule::default())),
         Rc::from(RefCell::from(gas::maths::DetectionModule::default())),
+        Rc::from(RefCell::from(low::deprecated::DetectionModule::default())),
+        Rc::from(RefCell::from(low::downcast::DetectionModule::default())),
+        Rc::from(RefCell::from(info::events::DetectionModule::default())),
+        Rc::from(RefCell::from(low::abi::DetectionModule::default())),
+        Rc::from(RefCell::from(low::params::DetectionModule::default())),
     ]
 }
 

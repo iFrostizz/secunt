@@ -180,6 +180,10 @@ fn pack(bytes: Vec<usize>) -> Vec<Vec<usize>> {
     packed
 }
 
+pub fn is_power_of_2(x: u128) -> bool {
+    (x != 0) && ((x & (x - 1)) == 0)
+}
+
 #[test]
 fn packs() {
     assert_eq!(pack(vec![32, 8, 20]), vec![vec![32], vec![8, 20]]);

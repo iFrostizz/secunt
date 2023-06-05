@@ -3,17 +3,29 @@
 use crate::build_visitor;
 
 build_visitor!(
-    BTreeMap::from([(
-        0,
+    BTreeMap::from([
+        (0,
         FindingKey {
             description: "using extcodesize. Can be an issue if determining if EOA.".to_string(),
             summary: "extcodesize for EOA test".to_string(),
             severity: Severity::Medium
-        }
-    )]),
+        }),
+        (1,
+         FindingKey {
+             summary: "No need to use assembly for available method".to_string(),
+             description: "Some methods that are accessed using assembly can be accessed by high level methods. It is thus no need the risk of using assembly, which may flag some static analyzers or shoot yourself in the foot.".to_string(),
+             severity: Severity::Informal,
+         })
+    ]),
+
     fn visit_yul_identifier(&mut self, yul_identifier: &mut YulIdentifier) {
-        if yul_identifier.name == "extcodesize" {
-            self.push_finding(0, Some(yul_identifier.src.clone()))
+        let n = yul_identifier.name.as_str();
+        if ["extcodesize", "caller", "callvalue", "calldatasize", "extcodesize", "chainid", "gas", "extcodehash", "selfbalance", "address"].contains(&n) {
+            self.push_finding(1, Some(yul_identifier.src.clone()));
+
+            if n == "extcodesize" {
+                self.push_finding(0, Some(yul_identifier.src.clone()));
+            }
         }
 
         yul_identifier.visit(self)
@@ -91,5 +103,32 @@ contract NestedExtCodeSize {
     assert_eq!(
         lines_for_findings_with_code_module(&findings, "assembly", 0), // extcodesize
         vec![9]
+    );
+}
+
+#[test]
+fn assembly_meth() {
+    let findings = compile_contract_and_get_findings(String::from(
+        "pragma solidity ^0.8.0;
+
+contract Assembly {
+    function make(address to) public {
+        assembly {
+            let id := chainid()
+            let cds := calldatasize()
+            // let h := keccak256()
+            let g := gas()
+            let addr := address()
+            let size := extcodesize(addr)
+            let hash := extcodehash(addr)
+            let bal := selfbalance()
+        }
+    }
+}",
+    ));
+
+    assert_eq!(
+        lines_for_findings_with_code_module(&findings, "assembly", 1), // extcodesize
+        vec![6, 7, 9, 10, 11, 12, 13]
     );
 }

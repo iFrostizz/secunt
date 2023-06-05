@@ -79,7 +79,7 @@ pub fn run_analysis(args: Analyze) -> eyre::Result<()> {
         tracing::warn!("traversing the ast");
 
         let findings = walker.traverse().expect("failed to traverse ast");
-        let num_findings = findings.len();
+        let num_findings = findings.values().map(|f| f.len()).sum::<usize>();
         println!("Caught {num_findings} findings");
 
         if let Some(report_style) = args.style {

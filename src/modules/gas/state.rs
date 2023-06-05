@@ -63,6 +63,14 @@ build_visitor! {
                 description: "".to_string(),
                 severity: Severity::Gas,
             }
+        ),
+        (
+            7,
+             FindingKey {
+                 summary: "No check for address(0) when set to state".to_string(),
+                 description: "There is no check for address(0) when this variable is saved to the storage. This can have some bad consequences if the value of the address that is coming from the parameters is not controlled.".to_string(),
+                 severity: Severity::Low,
+             }
         )
     ]),
 
@@ -134,7 +142,16 @@ build_visitor! {
             self.inside.constructor = true;
         }
 
+        let params = &function_definition.parameters.parameters;
+        let addr_names = params.iter().filter(|p| {
+            let td = p.type_descriptions.clone();
+            td.type_string == Some(String::from("address"))
+        }).map(|p| p.name.clone()).collect::<HashSet<_>>();
+        self.param_addr = addr_names;
+
         function_definition.visit(self)?;
+
+        self.param_addr = Default::default();
 
         self.inside.constructor = false;
 
@@ -153,18 +170,42 @@ build_visitor! {
             }
         }
 
-        match assignment.operator {
-            AssignmentOperator::AddAssign | AssignmentOperator::SubAssign => {
-                if let Expression::Identifier(id) = &assignment.lhs {
-                    if self.state_variables.contains(&id.name) {
+        if let Expression::Identifier(id) = &assignment.lhs {
+            if self.state_variables.contains(&id.name) {
+                match assignment.operator {
+                    AssignmentOperator::AddAssign | AssignmentOperator::SubAssign => {
                         self.push_finding(3, Some(assignment.src.clone()));
                     }
+                    AssignmentOperator::Assign => {
+                        if let Expression::Identifier(id) = &assignment.rhs {
+                            if self.param_addr.contains(&id.name) {
+                                self.push_finding(7, Some(assignment.src.clone()));
+                            }
+                        }
+                    }
+                    _ => ()
                 }
             }
-            _ => ()
         }
 
         assignment.visit(self)
+    },
+
+    fn visit_binary_operation(&mut self, bo: &mut BinaryOperation) {
+        if let Expression::Identifier(lhs) = &bo.lhs {
+            let td = lhs.type_descriptions.clone();
+            if td.type_string == Some(String::from("address")) && self.param_addr.contains(&lhs.name) {
+                if let Expression::FunctionCall(rhs) = &bo.rhs {
+                    if let Some(Expression::Literal(lit)) = rhs.arguments.get(0) {
+                        if lit.value == Some(String::from("0")) {
+                            self.param_addr.remove(&lhs.name);
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -464,24 +505,49 @@ contract Const {
 }
 
 // TODO: after bringing the ast on the codebase from ethers-rs
-// #[test]
-// fn state_assign_loop() {
-//     let findings = compile_contract_and_get_findings(String::from(
-//         "pragma solidity 0.8.0;
+#[test]
+fn state_assign_loop() {
+    let findings = compile_contract_and_get_findings(String::from(
+        "pragma solidity 0.8.0;
 
-// contract Assign {
-//     uint256 val;
+contract Assign {
+    uint256 val;
 
-//     function loop() public {
-//         for (uint i; i < 10; i++) {
-//             val = i;
-//         }
-//     }
-// }",
-//     ));
+    function loop() public {
+        for (uint i; i < 10; i++) {
+            val = i;
+        }
+    }
+}",
+    ));
 
-//     assert_eq!(
-//         lines_for_findings_with_code_module(&findings, "state", 6),
-//         vec![8]
-//     );
-// }
+    assert_eq!(
+        lines_for_findings_with_code_module(&findings, "state", 6),
+        vec![8]
+    );
+}
+
+#[test]
+fn check_for_address() {
+    let findings = compile_contract_and_get_findings(String::from(
+        "pragma solidity 0.8.0;
+
+contract Addr {
+    address public to;
+
+    function setAddr(address some) public {
+        to = some;
+    }
+
+    function anotherAddr(address some) public {
+        require(some != address(0));
+        to = some;
+    }
+}",
+    ));
+
+    assert_eq!(
+        lines_for_findings_with_code_module(&findings, "state", 7),
+        [7]
+    );
+}

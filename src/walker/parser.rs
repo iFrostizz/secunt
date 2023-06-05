@@ -21,6 +21,30 @@ pub fn smallest_version_from_literals(literals: Vec<String>) -> Option<eyre::Res
     }
 }
 
+pub fn biggest_version_from_literals(literals: Vec<String>) -> Option<eyre::Result<Version>> {
+    let mut pragma = literals;
+    if pragma.remove(0) == "solidity" {
+        let maybe_upper = pragma.remove(0);
+
+        if maybe_upper == ">=" {
+            return Some(Ok(Version::new(0, 8, 20)));
+        }
+
+        let version_str = if maybe_upper == "^" {
+            // TODO: do the logic for making the version bigger
+            let as_str = pragma[0].clone() + &pragma[1];
+            as_str
+            // let scd: u8 = as_str.split('.').nth(2).unwrap().parse().unwrap();
+        } else {
+            maybe_upper + &pragma[0]
+        };
+
+        Some(Version::parse(&version_str).wrap_err_with(|| "issue parsing version"))
+    } else {
+        None
+    }
+}
+
 pub fn is_unspecific_version(literals: Vec<String>) -> bool {
     let mut pragma = literals;
     if pragma.remove(0) == "solidity" {
